@@ -1,5 +1,4 @@
-
-title: "CaseStudy2DDS"
+# CaseStudy2DDS
 
 
 ## An analysis of Attrition and Salaries.
