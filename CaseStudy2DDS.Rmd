@@ -1,0 +1,258 @@
+---
+title: "CaseStudy2DDS"
+author: "Ravi Sivaraman"
+date: "8/14/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## An analysis of Attrition and Salaries.
+   Frito-Lays CFO presented us with 870 employees with their personal attributes, including many personal and confidential data like age, salary, performance, marital status, etc. We studied the data to perform a statistical analysis to provide valuable insight of the employees. This is an estimate, not a guaranteed prediction, but has strong statistical reasons.
+   
+   This report is confidential, contains anonymized personal data.
+   
+   
+
+```{r include=FALSE}
+
+library(psych)
+library(FSA)
+library(e1071)
+library(caret)
+library(class)
+library(GGally)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(knitr)
+library(kableExtra)
+library(tidyr)
+library(ggplot2)
+```
+
+
+# Import Data
+
+The section imports the data into R
+
+``` {r  echo=TRUE}
+predictsalarydf = read.csv("CaseStudy2CompSet No Attrition.csv")
+attrdata =  read.csv("CaseStudy2CompSet No Attrition.csv")
+empdata = read.csv("CaseStudy2-data.csv")
+```
+
+## Video Analysis
+[YouTube link of Video Analysis: https://youtu.be/zh_DDJAn2d0](https://youtu.be/zh_DDJAn2d0)
+
+
+## 1 Attrition Analysis
+   There are several models to analyze the data to predict the attrition. We take all the relevent details, and run our model with different parameters to tune. We used two models here to compare and chose the best that is better fit.
+   The two models are K-Nearest Neighbors (KNN) and Naive Bayes Classifier. 
+      KNN is one of the popular algorithm used for regression and classification. KNN use and classify using the nearest point. 
+      Bayes uses Bayes Theorem, which assumes the variables are statistically independent.
+
+The graph below shows the employee attrition.
+```{r include=TRUE}
+#Plot the Attrition bar graph
+empdata %>% ggplot(aes(x=Attrition)) + geom_bar(fill="green") + ggtitle("Employee Attrition") + xlab("Attrition") + ylab("Number of employees")
+```
+
+A comparison of various attributes of employees with respect to Attrition.
+
+```{r include=TRUE}
+
+empdata$Gender<- as.numeric(as.factor(empdata$Gender))
+empdata$JobRole<- as.numeric(as.factor(empdata$JobRole))
+empdata$Department<- as.numeric(as.factor(empdata$Department))
+empdata$OverTime<- as.numeric(as.factor(empdata$OverTime))
+empdata$BusinessTravel<- as.numeric(as.factor(empdata$BusinessTravel))
+empdata$MaritalStatus<- as.numeric(as.factor(empdata$MaritalStatus))
+empdata$Over18<- as.numeric(as.factor(empdata$Over18))
+empdata$EducationField<- as.numeric(as.factor(empdata$EducationField))
+empdata$JobRole<- as.numeric(as.factor(empdata$JobRole))
+empdata$Attrition<- as.numeric(as.factor(empdata$Attrition))
+
+
+ggcorr(empdata[c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36)], name = "rho", color="gray30", size=3,layout.exp = 1, hjust = 1)
+```
+
+Darker the red, it is strongly correlated in positive way, and darker blue, it is strongly negatively correlated.
+The following attributes are positively correlated according to the estimate from the given data:
+1. Department
+2. Distance From Home
+3. Job Level
+4. Marital Status
+5. Number of companies worked
+
+The following are negatively correlated according to the estimate from the given data:
+1. Gender
+2. Hourly Rate
+3. Job Satisfaction
+4. Monthy Income
+
+A few more are related, but may only slightly contribute as shown in the graph.
+
+## Prediction Of Attrition
+
+With the given informaiton we can predict using KNN model first.
+
+First we split the data of 70/30 to train our model and we predict with the known values. This improves the prediction accuracy for the given data.
+
+```{r include=TRUE}
+
+#Split in to train and test data to create a model
+splitPerc = .7
+trainIndices = sample(1:dim(empdata)[1], round(splitPerc*dim(empdata)[1]))
+trainempdata = empdata[trainIndices,]
+testempdata = empdata[-trainIndices,]
+
+#Run our model into 30 times (a relatively large number) to shuffle different ways to train the model better
+testrows=30
+acc = data.frame(Sensitivity=numeric(testrows),Specificity=numeric(testrows),k=numeric(testrows))
+set.seed(83482)
+for(i in 1:30)
+{
+	classifications = knn(trainempdata[,c(2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36)], testempdata[,c(2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36)],trainempdata$Attrition,prob=TRUE,k=i)
+	cm =confusionMatrix(table(testempdata$Attrition,classifications))
+	acc$Sensitivity[i] = cm$byClass[1]
+	acc$Specificity[i] = cm$byClass[2]
+	acc$k[i] = i
+}
+#Plot Sensitivity and Specificity
+ggplot(acc, aes(x=k)) +  geom_line(aes(y=Sensitivity, colour="blue")) + geom_line(aes(y=Specificity, colour="red")) + ggtitle("Sensitivity vs Specificity in KNN") + xlab("K") + ylab("Accuracy") +
+    scale_color_discrete(name = "KNN", labels = c("Sensitivity", "Specificity"))
+
+```
+
+We use K as 11.
+```{r include=TRUE}
+attrdata$Gender<- as.numeric(as.factor(attrdata$Gender))
+attrdata$JobRole<- as.numeric(as.factor(attrdata$JobRole))
+attrdata$Department<- as.numeric(as.factor(attrdata$Department))
+attrdata$OverTime<- as.numeric(as.factor(attrdata$OverTime))
+attrdata$BusinessTravel<- as.numeric(as.factor(attrdata$BusinessTravel))
+attrdata$MaritalStatus<- as.numeric(as.factor(attrdata$MaritalStatus))
+attrdata$Over18<- as.numeric(as.factor(attrdata$Over18))
+attrdata$EducationField<- as.numeric(as.factor(attrdata$EducationField))
+attrdata$JobRole<- as.numeric(as.factor(attrdata$JobRole))
+
+classifications = knn(empdata[,c(2,4,5,6,7,8,9,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36)], attrdata[,c(2,3,4,5,6,7,8,9,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35)],empdata$Attrition,prob=TRUE,k=11)
+
+knnprediction = data.frame(attrdata[,c(1)],classifications)
+names(knnprediction) = c("Id", "KNNAttritionPrediction")
+knnprediction = transform(knnprediction, KNNAttritionPrediction = ifelse(KNNAttritionPrediction==1, "No", "Yes")) 
+kable(knnprediction) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+```
+
+### Attrition Prediction 
+```{r include=TRUE}
+
+ggplot(knnprediction, aes(x=KNNAttritionPrediction)) +  geom_bar(colour="blue") +  ggtitle("Attrition Prediction for given new set of employees in KNN") + xlab("Attrition") + ylab("Count") 
+  
+
+```
+
+## Naive Bayes Prediction
+
+Train the data.
+
+```{r include=TRUE}
+
+splitPerc = 0.7
+testrows=30
+empdata$Attrition<- as.factor(empdata$Attrition)
+nbacc = data.frame(Sensitivity=numeric(testrows),Specificity=numeric(testrows),k=numeric(testrows))
+for(j in 1:testrows)
+{
+	j
+  trainIndices = sample(1:dim(empdata)[1], round(splitPerc*dim(empdata)[1]))
+	trainempdata = empdata[trainIndices,]
+	testempdata = empdata[-trainIndices,]
+	model = naiveBayes(trainempdata[,c(2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36)],trainempdata$Attrition)
+	predicteddata = predict(model,testempdata[,c(2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36)])
+
+	cm =confusionMatrix(table(predicteddata,testempdata$Attrition))
+	nbacc$Sensitivity[j] = cm$byClass[1]
+	nbacc$Specificity[j] = cm$byClass[2]
+	nbacc$k[j] = j
+}
+ggplot(nbacc, aes(x=k)) +  geom_line(aes(y=Sensitivity, colour="blue")) + geom_line(aes(y=Specificity, colour="red")) + ggtitle("Sensitivity vs Specificity in Naive Bayes") + xlab("run") + ylab("Accuracy") +
+    scale_color_discrete(name = "Naive Bayes", labels = c("Sensitivity", "Specificity"))
+```
+
+Predict with the given data.
+
+```{r include=TRUE}
+
+model = naiveBayes(empdata[,c(2,4,5,6,7,8,9,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36)],empdata$Attrition)
+attrpredict = predict(model,attrdata[,c(2,3,4,5,6,7,8,9,12,13,14,15,16,17,18,19,20,21,22,24,25,26,27,28,29,30,31,32,33,34,35)])
+
+attrdf = data.frame(attrdata[,c(1)],attrpredict)
+names(attrdf) = c("Id", "NaivesBayesAttritionPrediction")
+attrdf = transform(attrdf, NaivesBayesAttritionPrediction = ifelse(NaivesBayesAttritionPrediction==1, "No", "Yes")) 
+
+kable(attrdf) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+ggplot(attrdf, aes(x=NaivesBayesAttritionPrediction)) +  geom_bar(colour="blue") +  ggtitle("Attrition Prediction for given new set of employees in Naive Bayes") + xlab("Attrition") + ylab("Count") 
+```
+
+## Which is better model?
+KNN is better model for the given data, as it has better Specificity and Sensitivity. 
+
+
+## Salary Prediction
+
+With the given original employee data, we can estimate a salary regression line. According to the correlation graph we have seen and the data is fairly normal (assumed), the confounding factors may be esimated.
+
+### Scattergraph
+plot(emp)
+
+The linear regression model fit is as follows:
+
+```{r include=TRUE}
+
+salaryfit = lm(MonthlyIncome ~ Age+BusinessTravel+DailyRate+Department+DistanceFromHome+Education+EducationField+EmployeeNumber+EnvironmentSatisfaction+Gender+HourlyRate+JobInvolvement+JobLevel+JobRole+JobSatisfaction+MaritalStatus+MonthlyRate+NumCompaniesWorked+OverTime+PercentSalaryHike+PerformanceRating+RelationshipSatisfaction+StockOptionLevel+TotalWorkingYears+TrainingTimesLastYear+WorkLifeBalance+YearsAtCompany+YearsInCurrentRole+YearsSinceLastPromotion+YearsWithCurrManager, data=empdata)
+
+summary(salaryfit)
+```
+
+### Regression Equation for Salary
+By eliminating the  nonsignificant varibles, we esimate the regression equation is as follows:
+
+ _MonthlySalary =  1.838e+02 * BusinessTravel - -7.302e+02 *Department - DistanceFromHome * -1.549e+01 +  3.822e+03 * JobLevel * 1.110e+02 * JobRole + TotalWorkingYears * 6.613e+01 - YearsWithCurrManager * 4.466e+01_ 
+ 
+ ```{r include=TRUE}
+
+predictsalarydf$Gender<- as.numeric(as.factor(predictsalarydf$Gender))
+predictsalarydf$JobRole<- as.numeric(as.factor(predictsalarydf$JobRole))
+predictsalarydf$Department<- as.numeric(as.factor(predictsalarydf$Department))
+predictsalarydf$OverTime<- as.numeric(as.factor(predictsalarydf$OverTime))
+predictsalarydf$BusinessTravel<- as.numeric(as.factor(predictsalarydf$BusinessTravel))
+predictsalarydf$MaritalStatus<- as.numeric(as.factor(predictsalarydf$MaritalStatus))
+predictsalarydf$Over18<- as.numeric(as.factor(predictsalarydf$Over18))
+predictsalarydf$EducationField<- as.numeric(as.factor(predictsalarydf$EducationField))
+predictsalarydf$JobRole<- as.numeric(as.factor(predictsalarydf$JobRole))
+
+predictedsalary=predict.lm(salaryfit, predictsalarydf)
+predictedsalarydf = data.frame(predictedsalary)
+predictedsalarydf$Id = seq_len(300)
+predictedsalarydf = predictedsalarydf[,c(2,1)]
+names(predictedsalarydf) = c("Id","SalaryPredicted ($)")
+
+kable(predictedsalarydf) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+  
+  plot(salaryfit)
+
+```
+
+
+
